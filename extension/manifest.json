@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "CF Visualizer Companion",
+  "version": "1.0.0",
+  "description": "Your Codeforces rating and weak topics at a glance, plus badges on problem pages.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "CF Visualizer" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.codeforces.com/problemset/problem/*",
+        "https://*.codeforces.com/contest/*/problem/*",
+        "https://*.codeforces.com/profile/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

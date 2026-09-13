@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { --bg:#07080a; --panel:#0c0e11; --panel2:#111419; --line:#1c2128; --line2:#2a313a; --fg:#e7ecf3; --dim:#828d9c; --faint:#565f6b; --acc:#4ade80; --bad:#f87171; }
+      body { width: 300px; margin: 0; font: 12px/1.4 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; background: var(--panel); color: var(--fg); }
+      header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+      .brand { display: flex; align-items: center; gap: 7px; font-weight: 700; }
+      .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--acc); box-shadow: 0 0 8px var(--acc); }
+      .acc { color: var(--acc); }
+      main { padding: 14px; }
+      .top { display: flex; gap: 10px; align-items: center; }
+      .av { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line2); background: var(--panel2); }
+      .handle { font: 700 15px/1.2 'Space Grotesk', system-ui, sans-serif; }
+      .muted { color: var(--faint); font-size: 10.5px; }
+      .delta { margin-left: auto; text-align: right; font: 700 16px/1.1 'Space Grotesk', system-ui, sans-serif; }
+      .label { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin: 14px 0 8px; }
+      .tag { display: grid; grid-template-columns: 1fr 34px; gap: 2px 8px; margin-bottom: 7px; font-size: 11px; }
+      .tag b { color: var(--bad); text-align: right; }
+      .bar { grid-column: 1 / 3; height: 3px; background: var(--line2); border-radius: 2px; overflow: hidden; }
+      .bar span { display: block; height: 100%; background: var(--bad); }
+      .btn { display: block; text-align: center; margin-top: 14px; padding: 9px; border-radius: 7px; border: 1px solid var(--acc); color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, transparent); text-decoration: none; font: 700 10.5px/1 inherit; letter-spacing: .12em; text-transform: uppercase; width: 100%; box-sizing: border-box; cursor: pointer; font-family: inherit; }
+      .err { color: var(--bad); line-height: 1.6; }
+      details { border-top: 1px solid var(--line); padding: 10px 14px; }
+      summary { cursor: pointer; color: var(--dim); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; }
+      label { display: block; margin-top: 9px; color: var(--faint); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+      input { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line2); background: var(--panel2); color: var(--fg); font: 500 11.5px inherit; font-family: inherit; outline: none; }
+      input:focus { border-color: var(--acc); }
+      .link { background: none; border: 0; color: var(--acc); cursor: pointer; padding: 0; font: inherit; font-size: 10.5px; }
+    </style>
+  </head>
+  <body>
+    <header><span class="brand"><span class="dot"></span>cf<span class="acc">::</span>visualizer</span><span class="muted">popup</span></header>
+    <main id="view" class="muted">Loading…</main>
+    <details id="settings">
+      <summary>Settings</summary>
+      <form id="form">
+        <label>Handle <input id="handle" required pattern="[A-Za-z0-9_.\-]{2,24}" /></label>
+        <label>Backend URL <input id="backend" type="url" required /></label>
+        <label>Dashboard URL <input id="dashboard" type="url" required /></label>
+        <button class="btn">Save</button>
+      </form>
+    </details>
+    <script src="popup.js"></script>
+  </body>
+</html>

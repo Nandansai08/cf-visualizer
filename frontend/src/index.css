@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Three looks. JS reads these back (ui.jsx readTheme) so charts share one palette. */
+:root,
+[data-look='phosphor'] {
+  --bg: #07080a; --panel: #0c0e11; --panel2: #111419; --line: #1c2128; --line2: #2a313a;
+  --fg: #e7ecf3; --dim: #828d9c; --faint: #565f6b; --acc: #4ade80; --acc2: #22d3ee;
+  --warn: #fbbf24; --bad: #f87171; --grid: rgba(255, 255, 255, 0.045); --cellbg: #12161a;
+  color-scheme: dark;
+}
+[data-look='amber'] {
+  --bg: #0b0906; --panel: #12100b; --panel2: #181509; --line: #2a2213; --line2: #3d3320;
+  --fg: #f3e8d2; --dim: #a08f72; --faint: #6e6047; --acc: #ffb300; --acc2: #ff7043;
+  --warn: #ffd54f; --bad: #ef5350; --grid: rgba(255, 179, 0, 0.05); --cellbg: #1a1509;
+  color-scheme: dark;
+}
+[data-look='daylight'] {
+  --bg: #f4f5f7; --panel: #ffffff; --panel2: #f0f2f5; --line: #e2e5ea; --line2: #cdd3db;
+  --fg: #14181d; --dim: #5d6771; --faint: #8b959f; --acc: #12855a; --acc2: #0d7ea8;
+  --warn: #b7791f; --bad: #c53030; --grid: rgba(0, 0, 0, 0.04); --cellbg: #eceff3;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--acc2); text-decoration: none; }
+a:hover { color: var(--acc); }
+input, button, select { font-family: inherit; }
+input[type='range'] { accent-color: var(--acc); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+.recharts-wrapper *:focus { outline: none; }
+
+@keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+@keyframes shim { 0% { background-position: -320px 0 } 100% { background-position: 320px 0 } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+.hov { transition: filter 0.15s; }
+.hov:hover { filter: brightness(1.3) saturate(1.1); }
+/* light ground: brightening washes pale marks into the background, so darken instead */
+[data-look='daylight'] .hov:hover { filter: brightness(0.8) saturate(1.25); }
+.hovcol { border-radius: 3px 3px 0 0; transition: background 0.15s; }
+.hovcol:hover { background: var(--grid); box-shadow: inset 0 0 0 1px var(--line2); }
+.hovrow { border-radius: 4px; transition: background 0.15s; }
+.hovrow:hover { background: var(--panel2); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; min-width: 0; animation: fadeUp 0.35s ease both; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.gridbg { background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 22px 22px; }
+.label { font: 500 10px/1.3 'JetBrains Mono', monospace; letter-spacing: 0.16em; color: var(--dim); text-transform: uppercase; }
+.sub { font: 400 10px/1.5 'JetBrains Mono', monospace; color: var(--faint); }
+.big { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; line-height: 1; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font: 400 10.5px/1 'JetBrains Mono', monospace; border: 1px solid var(--line2); border-radius: 5px; padding: 4px 8px; color: var(--dim); white-space: nowrap; }
+.btn { font: 500 10px/1 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--line2); border-radius: 6px; padding: 7px 10px; background: transparent; color: var(--dim); cursor: pointer; }
+.btn:hover { color: var(--fg); border-color: var(--faint); }
+.btn.on { color: var(--acc); border-color: var(--acc); background: color-mix(in srgb, var(--acc) 10%, transparent); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.input { background: var(--panel2); border: 1px solid var(--line2); border-radius: 7px; color: var(--fg); padding: 8px 11px; font: 500 12px/1.2 'JetBrains Mono', monospace; outline: none; }
+.input:focus { border-color: var(--acc); }
+.shim { background: linear-gradient(90deg, var(--panel2) 0%, var(--line2) 50%, var(--panel2) 100%); background-size: 640px 100%; animation: shim 1.4s linear infinite; border-radius: 8px; }
+.caret { width: 7px; height: 14px; background: var(--acc); animation: blink 1.1s step-end infinite; opacity: 0.8; flex: none; }
+.row-line { border-top: 1px solid var(--line); }
