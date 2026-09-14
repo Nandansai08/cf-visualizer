@@ -30,8 +30,8 @@ function CompareForm({ a = '', b = '' }) {
 
 function CompareView({ a, b }) {
   const C = useTheme()
-  const A = useFetch(`/profile/${encodeURIComponent(a)}?tz=${tzOffset}`)
-  const B = useFetch(`/profile/${encodeURIComponent(b)}?tz=${tzOffset}`)
+  const A = useFetch(`/profile/${encodeURIComponent(a)}?tz=${tzOffset}&full=0`)
+  const B = useFetch(`/profile/${encodeURIComponent(b)}?tz=${tzOffset}&full=0`)
   if (A.error || B.error)
     return (
       <div className="grid max-w-2xl gap-3">

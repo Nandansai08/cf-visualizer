@@ -40,12 +40,13 @@ async def info_and_history(handle):
 
 
 @app.get("/api/profile/{handle}")
-async def profile(handle: str, tz: int = Query(0, ge=-900, le=900)):
+async def profile(handle: str, tz: int = Query(0, ge=-900, le=900), full: bool = True):
+    """full=0 drops the per-submission log (Compare doesn't need it; it's ~MBs for heavy users)."""
     check(handle)
     info, hist = await info_and_history(handle)  # user.info first: fails fast on unknown handles
     subs = await user_status(handle)
     contests = await cf("contest.list", 3600, gym="false")
-    return A.build_profile(info, hist, subs, contests, tz)
+    return A.build_profile(info, hist, subs, contests, tz, include_subs=full)
 
 
 @app.get("/api/day/{handle}")
@@ -80,6 +81,14 @@ async def summary(handle: str):
             "maxRating": info.get("maxRating"), "avatar": info.get("titlePhoto"), "weak": weak["weak"],
             "relative": weak["relative"], "solved": sorted(solved), "attempted": sorted(attempted - solved),
             "weakDetail": [r for r in weak["ranked"] if r["tag"] in weak["weak"]]}
+
+
+@app.get("/api/blogs/{handle}")
+async def blogs(handle: str):
+    check(handle)
+    entries = await cf("user.blogEntries", 1800, handle=handle)
+    return [{k: e.get(k) for k in ("id", "title", "creationTimeSeconds", "rating", "tags", "locale")}
+            for e in sorted(entries, key=lambda e: -e["creationTimeSeconds"])]
 
 
 @app.get("/api/contests")

@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
 
 TIERS = [(1200, "pupil"), (1400, "specialist"), (1600, "expert"), (1900, "candidate master"),
          (2100, "master"), (2300, "international master"), (2400, "grandmaster"),
@@ -71,6 +70,30 @@ def weak_topics(rows, overall, min_attempts=3):
             "ranked": [r for r in cand]}
 
 
+def kmeans(X, k=3, n_init=10, iters=100, seed=0):
+    """Lloyd's k-means, k-means++ seeding, best of n_init by inertia. None if no run yields k non-empty clusters.
+    (numpy-only: scikit-learn + scipy would add ~150 MB to a serverless bundle for this one call.)"""
+    rng = np.random.default_rng(seed)
+    best = None
+    for _ in range(n_init):
+        C = X[[rng.integers(len(X))]]
+        while len(C) < k:
+            d = ((X[:, None] - C) ** 2).sum(-1).min(1)
+            C = np.vstack([C, X[rng.choice(len(X), p=d / d.sum()) if d.sum() else rng.integers(len(X))]])
+        for _ in range(iters):
+            labels = ((X[:, None] - C) ** 2).sum(-1).argmin(1)
+            new = np.array([X[labels == c].mean(0) if (labels == c).any() else C[c] for c in range(k)])
+            done = np.allclose(new, C)
+            C = new
+            if done:
+                break
+        labels = ((X[:, None] - C) ** 2).sum(-1).argmin(1)
+        inertia = float(((X - C[labels]) ** 2).sum())
+        if len(np.unique(labels)) == k and (best is None or inertia < best[0]):
+            best = (inertia, labels)
+    return best and best[1]
+
+
 def cluster_tags(rows):
     rows = [r for r in rows if r["attempted"] >= 2]
     if len(rows) < 6:
@@ -79,7 +102,9 @@ def cluster_tags(rows):
     fill = min(rated) if rated else 0
     X = np.array([[r["score"], math.log1p(r["attempted"]), r["avgSolvedRating"] or fill] for r in rows], float)
     X = (X - X.mean(0)) / (X.std(0) + 1e-9)
-    labels = KMeans(3, n_init=10, random_state=0).fit_predict(X)
+    labels = kmeans(X)
+    if labels is None:
+        return []  # fewer than 3 distinct tag profiles
     # strength = solve rate counts double, then volume and difficulty of solved problems
     strength = [2 * X[labels == c, 0].mean() + X[labels == c, 1].mean() + X[labels == c, 2].mean() for c in range(3)]
     out = []
@@ -311,7 +336,7 @@ def estimate_delta(field, handle, old_display, k, rank):
 
 # ---------- assembly ----------
 
-def build_profile(info, hist, subs, contests, tz_min=0, now=None):
+def build_profile(info, hist, subs, contests, tz_min=0, now=None, include_subs=True):
     now = now or datetime.now(timezone.utc).timestamp()
     df = frame(subs)
     p = problems(df)
@@ -319,7 +344,10 @@ def build_profile(info, hist, subs, contests, tz_min=0, now=None):
     solved = p[p["solved"].astype(bool)] if len(p) else p
     act = activity(df, tz_min, now)
     by_rating = solved["rating"].fillna(0).astype(int).value_counts().sort_index() if len(solved) else pd.Series(dtype=int)
-    history = [{**h, "delta": h["newRating"] - h["oldRating"]} for h in hist]
+    meta = {c["id"]: c for c in contests}
+    history = [{**h, "delta": h["newRating"] - h["oldRating"],
+                "startTimeSeconds": meta.get(h["contestId"], {}).get("startTimeSeconds"),
+                "durationSeconds": meta.get(h["contestId"], {}).get("durationSeconds")} for h in hist]
     return {
         "info": info,
         "history": history,
@@ -338,17 +366,24 @@ def build_profile(info, hist, subs, contests, tz_min=0, now=None):
         "patterns": patterns(df, tz_min),
         "milestones": milestones(hist, contests, act["longestSolve"]),
         "recent": [sub_row(s) for s in subs[:25]],
+        "submissions": [sub_row(s) for s in subs] if include_subs else [],
     }
 
 
 def sub_row(s):
-    return {"id": s["id"], "contestId": s.get("contestId"), "index": s["problem"]["index"],
-            "name": s["problem"].get("name", ""), "rating": s["problem"].get("rating"),
+    p = s.get("problem", {})
+    a = s.get("author", {})
+    return {"id": s["id"], "contestId": s.get("contestId") or p.get("contestId"), "index": p.get("index", ""),
+            "name": p.get("name", ""), "rating": p.get("rating"),
             "verdict": s.get("verdict", "TESTING"), "lang": s.get("programmingLanguage", ""),
-            "t": s["creationTimeSeconds"], "passed": s.get("passedTestCount", 0)}
+            "t": s.get("creationTimeSeconds", 0), "passed": s.get("passedTestCount", 0),
+            "rel": s.get("relativeTimeSeconds"),  # seconds since the author's own start; 2^31-1 for practice
+            "tags": p.get("tags", []), "timeMs": s.get("timeConsumedMillis", 0),
+            "memBytes": s.get("memoryConsumedBytes", 0), "type": a.get("participantType", "PRACTICE")}
 
 
 def day_submissions(subs, day, tz_min):
     """Submissions whose local (tz-shifted) date is `day` (YYYY-MM-DD), oldest first."""
     return [sub_row(s) for s in reversed(subs)
             if datetime.fromtimestamp(s["creationTimeSeconds"] + tz_min * 60, timezone.utc).date().isoformat() == day]
+

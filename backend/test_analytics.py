@@ -43,6 +43,11 @@ def test_sparse_and_empty():
     subs = [sub(1, "1-A", "OK", ["math"]), sub(2, "1-B", "WRONG_ANSWER", ["dp"]), sub(3, "1-B", "WRONG_ANSWER", ["dp"])]
     p = A.build_profile({"handle": "x"}, [], subs, [], 0)
     assert p["solved"]["total"] == 1 and p["solved"]["attempted"] == 2 and p["weakTopics"]["weak"] == []
+    assert len(p["submissions"]) == 3
+    assert A.build_profile({"handle": "x"}, [], subs, [], 0, include_subs=False)["submissions"] == []
+    hist = [{"contestId": 1, "contestName": "R1", "rank": 5, "ratingUpdateTimeSeconds": 2_000, "oldRating": 0, "newRating": 400}]
+    h = A.build_profile({"handle": "x"}, hist, subs, [{"id": 1, "startTimeSeconds": 1_000, "phase": "FINISHED", "name": "R1"}], 0)["history"][0]
+    assert h["startTimeSeconds"] == 1_000 and h["delta"] == 400 and h["durationSeconds"] is None
 
 
 def test_weak_and_clusters():

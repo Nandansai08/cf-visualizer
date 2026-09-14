@@ -5,7 +5,7 @@ import { Empty, ErrorCard, Panel, Stat, useFetch, useTheme } from './ui'
 
 export default function Predict({ p }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <Estimator p={p} />
       <Forecast p={p} />
     </div>
@@ -57,9 +57,9 @@ function Estimator({ p }) {
   return (
     <Panel label="Live rating change estimator"
       right={<span className="sub">{name ?? '—'}{field ? ` · ${field.size.toLocaleString()} rated participants` : ''}</span>}>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="flex flex-col gap-4">
-          <select value={chosen} onChange={(e) => setCid(e.target.value)} className="input" aria-label="Contest">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <select value={chosen} onChange={(e) => setCid(e.target.value)} className="input w-full min-w-0" aria-label="Contest">
             {live.length > 0 && <optgroup label="Running / awaiting ratings">{live.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>}
             {mine.length > 0 && <optgroup label="Your rated contests (what-if)">{mine.map((h) => <option key={h.contestId} value={h.contestId}>{h.contestName}</option>)}</optgroup>}
             <optgroup label="Recent contests">{recent.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>
@@ -87,7 +87,7 @@ function Estimator({ p }) {
           </div>
           {res.busy && !field && <span className="sub">loading contest field — live contests pull the full rated list once a day (~20 s)…</span>}
         </div>
-        <div className="flex flex-col items-center justify-center gap-3 text-center lg:pl-6" style={{ borderLeft: '1px solid var(--line)' }}>
+        <div className="flex flex-col items-center justify-center gap-3 border-t pt-5 text-center lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6" style={{ borderColor: 'var(--line)' }}>
           {res.error ? <ErrorCard title={res.error} /> : (
             <>
               <span className="label" style={{ color: 'var(--faint)' }}>Predicted Δ</span>

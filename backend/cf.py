@@ -1,13 +1,16 @@
 """Codeforces API client: SQLite cache + global rate limit (CF allows ~1 req / 2 s per IP)."""
 import asyncio
 import json
+import os
 import sqlite3
 import time
 from pathlib import Path
 
 import httpx
 
-DB = sqlite3.connect(Path(__file__).with_name("cache.db"), check_same_thread=False)
+# ponytail: serverless (Vercel) only has a writable /tmp, and it's per-instance; a shared cache (Redis/KV) if cold loads hurt
+CACHE_DIR = Path(os.environ.get("CACHE_DIR") or ("/tmp" if os.environ.get("VERCEL") else Path(__file__).parent))
+DB = sqlite3.connect(CACHE_DIR / "cache.db", check_same_thread=False)
 DB.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, ts REAL, body TEXT)")
 
 _client = httpx.AsyncClient(timeout=90, headers={"User-Agent": "cf-visualizer"})

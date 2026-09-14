@@ -84,6 +84,51 @@ export const problemUrl = (contestId, index) =>
     ? `https://codeforces.com/gym/${contestId}/problem/${index}`
     : `https://codeforces.com/problemset/problem/${contestId}/${index}`
 
+export const clock = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+
+/**
+ * Round playback from one participant's in-contest submissions. Times are seconds from their own start
+ * (CF's relativeTimeSeconds, so virtual/late starts line up). A problem's bar runs from the previous AC
+ * (or 0:00) to its AC / last attempt; "wasted" is first failed attempt → AC or last attempt.
+ */
+export function roundTimeline(subs, start, duration) {
+  const at = (s) => (s.rel != null && s.rel < 2 ** 31 - 1 ? s.rel : s.t - start)
+  const byIdx = new Map()
+  for (const s of subs.map((s) => ({ ...s, at: at(s) })).sort((a, b) => a.at - b.at)) {
+    if (!byIdx.has(s.index)) byIdx.set(s.index, [])
+    byIdx.get(s.index).push(s)
+  }
+  const rows = [...byIdx.values()].map((ss) => {
+    const ac = ss.find((s) => s.verdict === 'OK')
+    const tries = ac ? ss.slice(0, ss.indexOf(ac)) : ss
+    const fails = tries.filter((s) => s.verdict !== 'OK')
+    const end = ac ? ac.at : ss.at(-1).at
+    return {
+      index: ss[0].index, name: ss[0].name, rating: ss[0].rating, tags: ss[0].tags ?? [], subs: ss, ac, fails, end,
+      // CF: compilation errors and failing test 1 carry no penalty
+      penalty: fails.filter((s) => s.verdict !== 'COMPILATION_ERROR' && s.passed > 0).length,
+      wasted: fails.length ? end - fails[0].at : 0,
+      first: ss[0].at,
+    }
+  })
+  const acs = rows.filter((r) => r.ac).map((r) => r.end)
+  for (const r of rows) r.from = Math.max(0, ...acs.filter((t) => t <= r.first && t !== r.end))
+  rows.sort((a, b) => a.index.localeCompare(b.index, undefined, { numeric: true }))
+  const tags = new Map()
+  for (const r of rows) for (const t of r.tags) {
+    const e = tags.get(t) ?? { tag: t, wasted: 0, problems: [], struggled: [] }
+    e.problems.push(r.index)
+    if (r.wasted) { e.wasted += r.wasted; e.struggled.push(r.index) }
+    tags.set(t, e)
+  }
+  return {
+    rows,
+    span: Math.max(duration || 0, ...rows.map((r) => r.end), 1),
+    wasted: rows.reduce((s, r) => s + r.wasted, 0),
+    tags: [...tags.values()].filter((t) => t.wasted).sort((a, b) => b.wasted - a.wasted),
+  }
+}
+
 export const pct = (x) => `${Math.round(x * 100)}%`
 export const signed = (n) => (n > 0 ? `+${n}` : `${n}`)
 export const shortLang = (l) => l.replace(/^GNU\s*/, '').replace(/\s*\(.*\)$/, '').replace('Microsoft Visual ', 'MSVC ')

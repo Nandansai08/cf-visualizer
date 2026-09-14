@@ -3,4 +3,3 @@ uvicorn
 httpx
 numpy
 pandas
-scikit-learn

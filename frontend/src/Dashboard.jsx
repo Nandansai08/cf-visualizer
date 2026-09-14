@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Bar, BarChart, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import Blogs from './Blogs'
 import { RatingChart } from './charts'
+import ContestAnalysis from './ContestAnalysis'
 import {
   fmtDate, fmtMonth, isoDay, nextTier, pct, rankColor, shortLang, signed, timeAgo, tzOffset, verdictCode, verdictColor, verdictLabel,
 } from './lib'
-import Predict from './Predict'
+import Submissions from './Submissions'
 import {
   ChartTip, Empty, ErrorCard, HandleName, Panel, Seg, Skeleton, Stat, TipBox, axisProps, chartTipWrapper, tip, useFetch, useHoverTip, useTheme,
 } from './ui'
@@ -13,7 +15,7 @@ import Weak from './Weak'
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** Loads a profile once and renders whichever tab is active. */
-export default function Profile({ handle, tab }) {
+export default function Profile({ handle, tab, sub }) {
   const q = useFetch(`/profile/${encodeURIComponent(handle)}?tz=${tzOffset}`)
   if (q.loading) return <Loading />
   if (q.error)
@@ -27,8 +29,10 @@ export default function Profile({ handle, tab }) {
       </div>
     )
   const p = q.data
+  if (tab === 'submissions') return <Submissions p={p} />
+  if (tab === 'contests' || tab === 'predict') return <ContestAnalysis p={p} contest={sub} />
   if (tab === 'weak') return <Weak p={p} handle={handle} />
-  if (tab === 'predict') return <Predict p={p} />
+  if (tab === 'blogs') return <Blogs handle={p.info.handle} />
   return <Dash p={p} />
 }
 
@@ -81,7 +85,7 @@ function Dash({ p }) {
             </span>
           }>
           <RatingChart history={p.history} forecast={p.forecast} />
-          <p className="sub mt-2">hover to inspect · forecast is a rough estimate — see predict</p>
+          <p className="sub mt-2">hover to inspect · forecast is a rough estimate — <a href={`#/u/${p.info.handle}/contests`}>see contest analysis</a></p>
         </Panel>
       )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -254,17 +258,35 @@ function ByDifficulty({ s }) {
   return (
     <Panel label="Solved by difficulty" right={<span className="sub">{s.total} of {s.attempted} attempted</span>}>
       {!data.length ? <Empty>No solved problems yet.</Empty> : (
-        <div style={{ height: 170 }}>
+        <div style={{ height: 230 }}>
           <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 14, right: 0, left: 0, bottom: 0 }}>
-              <XAxis dataKey="x" {...axisProps(C)} tick={{ fill: C.fg, fontSize: 11, fontWeight: 500, fontFamily: 'JetBrains Mono' }}
-                interval={data.length > 14 ? 1 : 0} tickMargin={6} height={26} />
+            <BarChart data={data} margin={{ top: 16, right: 12, left: 36, bottom: 20 }}>
+              <XAxis
+                dataKey="x"
+                {...axisProps(C)}
+                interval={data.length > 22 ? 1 : 0}
+                height={45}
+                tick={({ x, y, payload }) => (
+                  <text
+                    x={x}
+                    y={y + 6}
+                    transform={`rotate(-35, ${x}, ${y + 6})`}
+                    textAnchor="end"
+                    fill={C.fg}
+                    fontSize={10}
+                    fontWeight={500}
+                    fontFamily="JetBrains Mono"
+                  >
+                    {payload.value}
+                  </text>
+                )}
+              />
               <Tooltip cursor={tip.cursor} wrapperStyle={chartTipWrapper}
                 content={<ChartTip title={(d) => (d.x === 'unrated' ? 'unrated problems' : `rating ${d.x}`)}
                   rows={(d) => <div><b style={{ color: rankColor(d.rating === 'unrated' ? null : d.rating, C.dark) }}>{d.count}</b> solved · {pct(d.count / s.total)} of total</div>} />} />
-              <Bar dataKey="count" name="solved" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+              <Bar dataKey="count" name="solved" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {data.map((r) => <Cell key={r.x} fill={rankColor(r.rating === 'unrated' ? null : r.rating, C.dark)} />)}
-                {data.length <= 16 && <LabelList dataKey="count" position="top" style={{ fill: C.faint, fontSize: 8.5, fontFamily: 'JetBrains Mono' }} />}
+                {data.length <= 16 && <LabelList dataKey="count" position="top" style={{ fill: C.faint, fontSize: 9, fontFamily: 'JetBrains Mono' }} />}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -279,11 +301,11 @@ function Verdicts({ s }) {
   return (
     <Panel>
       {!s.verdicts.length ? <Empty>No submissions.</Empty> : (
-        <div className="flex items-center gap-5">
-          <div className="flex-none" style={{ width: 128, height: 128 }}>
+        <div className="flex items-center gap-6 p-1">
+          <div className="flex-none" style={{ width: 160, height: 160 }}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={s.verdicts} dataKey="count" nameKey="verdict" innerRadius="70%" outerRadius="100%" paddingAngle={1} stroke="none" isAnimationActive={false}>
+                <Pie data={s.verdicts} dataKey="count" nameKey="verdict" innerRadius="68%" outerRadius="98%" paddingAngle={2} stroke="none" isAnimationActive={false}>
                   {s.verdicts.map((v) => <Cell key={v.verdict} fill={verdictColor(v.verdict, C)} />)}
                 </Pie>
                 <Tooltip wrapperStyle={chartTipWrapper}
@@ -292,13 +314,13 @@ function Verdicts({ s }) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <span className="label mb-1">Verdicts · {s.submissions.toLocaleString()}</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <span className="label mb-0.5" style={{ fontSize: 11 }}>Verdicts · {s.submissions.toLocaleString()}</span>
             {s.verdicts.slice(0, 6).map((v) => (
-              <div key={v.verdict} className="flex items-center gap-2" style={{ fontSize: 10.5 }}>
-                <span className="size-2 flex-none rounded-sm" style={{ background: verdictColor(v.verdict, C) }} />
+              <div key={v.verdict} className="flex items-center gap-2.5" style={{ fontSize: 11.5 }}>
+                <span className="size-2.5 flex-none rounded-sm" style={{ background: verdictColor(v.verdict, C) }} />
                 <span className="flex-1 truncate" style={{ color: 'var(--dim)' }}>{verdictLabel(v.verdict)}</span>
-                <span className="tabular-nums">{(100 * v.count / s.submissions).toFixed(1)}%</span>
+                <span className="tabular-nums font-semibold text-xs" style={{ color: 'var(--fg)' }}>{(100 * v.count / s.submissions).toFixed(1)}%</span>
               </div>
             ))}
           </div>
