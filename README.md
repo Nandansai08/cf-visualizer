@@ -1,5 +1,7 @@
 # cf::visualizer
 
+**Live:** https://cf-visualiser-psi.vercel.app
+
 Open-source Codeforces profile analytics for any handle: rating history with forecast, problem ladder,
 full submission log, contest post-mortems (where the time went, tags that cost you time), weak-topic
 clusters with practice recommendations, a live rating-change estimator, blogs, and head-to-head compare.
