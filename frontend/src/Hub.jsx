@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api, fmtDate, fmtMonth, isoDay, signed, timeAgo, tzOffset } from './lib'
 import {
-  PLAT, PLATFORMS, combine, contestsByMonth, CORE, download, gcalLink, icsFor, insights, loadAccounts, pColor, parseSpec, practiceLinks,
+  PLAT, PLATFORMS, combine, CORE, download, gcalLink, icsFor, insights, loadAccounts, pColor, parseSpec, practiceLinks,
   saveAccounts, toSpec,
 } from './platforms'
 import { ChartTip, Empty, ErrorCard, Panel, Seg, Skeleton, Stat, TipBox, axisProps, chartTipWrapper, useFetch, useHoverTip, useTheme } from './ui'
@@ -75,96 +75,64 @@ function HubView({ acc, ids, view }) {
   const spec = toSpec(acc)
   const loaded = ids.filter((id) => s[id]?.data).map((id) => s[id].data)
   const pending = ids.filter((id) => !s[id] || s[id].loading)
-  const [copied, setCopied] = useState(false)
   useEffect(() => { if (Object.keys(acc).length) saveAccounts(acc) }, [spec]) // eslint-disable-line react-hooks/exhaustive-deps
-  const share = () => {
-    navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/hub/${spec}/all`).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
-  }
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <a href={`#/hub/${spec}/all`} className={`btn ${view === 'all' ? 'on' : ''}`}>Combined</a>
+      <div className="flex flex-wrap items-center gap-1">
+        <a href={`#/hub/${spec}/all`} className={`btn ${view === 'all' ? 'on' : ''}`}>All</a>
         {ids.map((id) => (
           <a key={id} href={`#/hub/${spec}/${id}`} className={`btn flex items-center gap-1.5 ${view === id ? 'on' : ''}`}>
-            <span className="inline-block size-2 rounded-full" style={{ background: pColor(id), opacity: s[id]?.data ? 1 : 0.35 }} />
+            <span className="inline-block size-1.5 rounded-full" style={{ background: s[id]?.error ? 'var(--bad)' : pColor(id), opacity: s[id]?.loading ? 0.35 : 1 }} />
             {PLAT[id].name}
-            {s[id]?.error && <span style={{ color: 'var(--bad)' }} title={s[id].error}>!</span>}
           </a>
         ))}
-        <div className="flex-1" />
-        <span className="sub flex flex-wrap items-center gap-3">
-          <a href={`#/hub/${spec}/connect`}>edit accounts</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); share() }}>{copied ? 'link copied' : 'copy link'}</a>
-          {loaded.length > 0 && (
-            <a href="#" onClick={(e) => { e.preventDefault(); download(`coding-profile-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ accounts: acc, profiles: loaded }, null, 2)) }}>export json</a>
-          )}
-        </span>
+        {pending.length > 0 && (
+          <span className="sub ml-2 flex items-center gap-2">
+            <span className="caret" style={{ height: 11, width: 6 }} /> fetching {pending.map((id) => PLAT[id].name).join(' · ')}
+          </span>
+        )}
       </div>
-      {pending.length > 0 && (
-        <span className="sub flex items-center gap-2">
-          <span className="caret" style={{ height: 11, width: 6 }} /> fetching {pending.map((id) => PLAT[id].name).join(' · ')}
-        </span>
-      )}
       {ids.filter((id) => s[id]?.error).map((id) => (
         <ErrorCard key={id} title={`${PLAT[id].name} · ${acc[id]}: ${s[id].error}`} onRetry={() => reload(id)}>
-          {s[id].status === 404 ? 'Check the username, or edit your accounts.' : 'The judge may be down or blocking requests; cached data is used when available.'}
+          {s[id].status === 404 ? 'Check the username, or edit your accounts.' : 'The site may be down or blocking requests. Cached data is used when there is any.'}
         </ErrorCard>
       ))}
       {view === 'all'
-        ? loaded.length ? <Combined ps={loaded} spec={spec} /> : pending.length ? <Skeleton style={{ height: 340 }} /> : null
-        : s[view]?.data ? <PlatformView p={s[view].data} /> : s[view]?.error ? null : <Skeleton style={{ height: 340 }} />}
+        ? loaded.length ? <Combined ps={loaded} acc={acc} spec={spec} /> : pending.length ? <HubLoading /> : null
+        : s[view]?.data ? <PlatformView p={s[view].data} /> : s[view]?.error ? null : <HubLoading />}
+    </div>
+  )
+}
+
+function HubLoading() {
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        <Skeleton className="min-h-52" />
+        <Skeleton className="min-h-52" />
+      </div>
+      <Skeleton style={{ height: 220 }} />
     </div>
   )
 }
 
 // ---------------- combined ----------------
 
-function Combined({ ps, spec }) {
+function Combined({ ps, acc, spec }) {
   const m = useMemo(() => combine(ps), [ps])
-  const notes = useMemo(() => insights(ps, m), [ps, m])
+  const rated = ps.filter((p) => p.contests.length)
   return (
     <>
-      <section className="panel grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Problems solved" value={m.solved.toLocaleString()} hint={`across ${ps.length} platform${ps.length > 1 ? 's' : ''}`} />
-        <Stat label="Contests" value={m.contests.length} hint={`${m.contests.filter((c) => c.t > Date.now() / 1000 - 365 * 864e2).length} in the last year`} />
-        <Stat label="Streak" value={`${m.streak.current}d`} color="var(--acc)" hint={`longest ${m.streak.longest}d (last year)`} />
-        <Stat label="Active days" value={m.activeDays} hint="last 12 months" />
-        <Stat label="Submissions" value={m.subsYear.toLocaleString()} hint="last 12 months" />
-        <Stat label="Last active" value={m.lastActive ? rel(m.lastActive) : '—'} hint={m.lastActive ? fmtDate(new Date(`${m.lastActive}T00:00`) / 1000) : 'no recent activity'} />
-      </section>
-
-      <div className={`grid gap-4 sm:grid-cols-2 ${ps.length > 2 ? 'xl:grid-cols-4' : ''}`}>
-        {ps.map((p) => <PlatformCard key={p.platform} p={p} spec={spec} />)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)]">
+        <Summary ps={ps} m={m} acc={acc} spec={spec} />
+        <ThisWeek ps={ps} m={m} />
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <Heatmap daily={m.daily} ids={ps.map((p) => p.platform)} />
-        <Panel label="Insights">
-          {notes.length ? (
-            <ul className="flex flex-col gap-2.5" style={{ fontSize: 11.5, lineHeight: 1.65 }}>
-              {notes.map((n) => <li key={n} className="flex gap-2"><span style={{ color: 'var(--acc)' }}>›</span><span>{n}</span></li>)}
-            </ul>
-          ) : <Empty>Not enough data yet for insights.</Empty>}
-        </Panel>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <WeeklyGoal m={m} />
-        <SolvedShare ps={ps} />
-      </div>
-
-      {ps.some((p) => p.contests.length) && <RatingGrid ps={ps.filter((p) => p.contests.length)} />}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <DifficultyMix ps={ps} />
-        <ContestsPerMonth contests={m.contests} ids={ps.map((p) => p.platform)} />
-      </div>
-
+      <Heatmap daily={m.daily} ids={ps.map((p) => p.platform)} m={m} />
+      {rated.length > 0 && <Ratings ps={rated} />}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Topics m={m} ids={ps.filter((p) => p.tags.length).map((p) => p.platform)} />
-        <Practice m={m} ps={ps} />
+        <Topics m={m} ps={ps} />
+        <DifficultyMix ps={ps} />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <Upcoming compact filter={ps.map((p) => p.platform)} />
         <RecentFeed items={m.recent} />
@@ -178,30 +146,128 @@ const rel = (day) => {
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`
 }
 
-function PlatformCard({ p, spec }) {
-  const last = p.contests.at(-1)
+/** Same shape as the Codeforces profile card: who, the headline number, then one row per account. */
+function Summary({ ps, m, acc, spec }) {
+  const [copied, setCopied] = useState(false)
+  const share = () => {
+    navigator.clipboard?.writeText(`${location.origin}${location.pathname}#/hub/${spec}/all`)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }, () => {})
+  }
+  const exportJson = () => download(`coding-profile-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ accounts: acc, profiles: ps }, null, 2))
+  const total = Math.max(1, m.solved)
   return (
-    <a href={`#/hub/${spec}/${p.platform}`} className="panel flex flex-col gap-3" style={{ borderTop: `3px solid ${pColor(p.platform)}`, color: 'var(--fg)' }}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="label" style={{ color: 'var(--fg)' }}>{p.name}</span>
-        <span className="sub truncate">{p.handle}</span>
+    <section className="panel gridbg flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <span className="label">{ps.length} platform{ps.length > 1 ? 's' : ''} connected</span>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="big" style={{ fontSize: 34, letterSpacing: '-.01em' }}>{m.solved.toLocaleString()}</span>
+          <span style={{ color: 'var(--dim)' }}>problems solved</span>
+        </div>
+        <div className="flex h-2 gap-[2px] overflow-hidden rounded-sm" role="img" aria-label="Share of solved problems by platform">
+          {ps.filter((p) => p.solved).map((p) => (
+            <div key={p.platform} style={{ flex: p.solved, background: pColor(p.platform) }} title={`${p.name} ${p.solved}`} />
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Rating" value={p.rating ?? '—'} size={20} hint={p.title ?? (p.rating == null ? 'unrated' : 'rated')} />
-        <Stat label="Max" value={p.maxRating ?? '—'} size={20} />
-        <Stat label="Solved" value={p.solved.toLocaleString()} size={20} hint={`${p.contests.length} contests`} />
+      <div className="flex flex-col">
+        <div className="grid gap-3 px-1 pb-1" style={{ gridTemplateColumns: 'minmax(0,1.3fr) repeat(3, minmax(0,1fr))' }}>
+          {['account', 'rating', 'solved', 'last Δ'].map((l, i) => (
+            <span key={l} className={`label ${i ? 'text-right' : ''}`} style={{ fontSize: 8.5, color: 'var(--faint)' }}>{l}</span>
+          ))}
+        </div>
+        {ps.map((p) => {
+          const last = p.contests.at(-1)
+          return (
+            <a key={p.platform} href={`#/hub/${spec}/${p.platform}`} className="hovrow row-line grid items-center gap-3 px-1 py-2.5"
+              style={{ gridTemplateColumns: 'minmax(0,1.3fr) repeat(3, minmax(0,1fr))', color: 'var(--fg)', fontSize: 11.5 }}>
+              <span className="flex min-w-0 flex-col gap-1">
+                <span className="flex items-center gap-2"><span className="size-2 flex-none rounded-full" style={{ background: pColor(p.platform) }} /><b className="truncate">{p.name}</b></span>
+                <span className="sub truncate pl-4">{p.handle}{p.title ? ` · ${p.title}` : ''}</span>
+              </span>
+              <MiniStat value={p.rating ?? '—'} hint={p.maxRating ? `max ${p.maxRating}` : null} />
+              <MiniStat value={p.solved.toLocaleString()} hint={`${Math.round((100 * p.solved) / total)}%`} />
+              <MiniStat value={last?.delta != null ? signed(last.delta) : '—'}
+                color={last?.delta == null ? undefined : last.delta >= 0 ? 'var(--acc)' : 'var(--bad)'} hint={last ? timeAgo(last.t) : `${p.contests.length} contests`} />
+            </a>
+          )
+        })}
       </div>
-      {last && (
-        <span className="sub truncate">
-          last contest {timeAgo(last.t)} · {last.delta != null && <b style={{ color: last.delta >= 0 ? 'var(--acc)' : 'var(--bad)' }}>{signed(last.delta)}</b>}
-        </span>
+      <div className="flex flex-wrap gap-2">
+        <a className="chip" href={`#/hub/${spec}/connect`}>edit accounts</a>
+        <button className="chip cursor-pointer bg-transparent" onClick={share}>{copied ? 'link copied ✓' : 'copy share link'}</button>
+        <button className="chip cursor-pointer bg-transparent" onClick={exportJson}>export json</button>
+        <a className="chip" href="#/upcoming">contest calendar ↗</a>
+      </div>
+    </section>
+  )
+}
+
+function MiniStat({ value, hint, color }) {
+  return (
+    <span className="flex min-w-0 flex-col gap-1 text-right">
+      <span className="font-bold tabular-nums" style={{ fontSize: 14, color }}>{value}</span>
+      {hint && <span className="sub truncate">{hint}</span>}
+    </span>
+  )
+}
+
+/** Right-hand card, like "Next rank" on the Codeforces overview: the goal, the streak, and what to do next. */
+function ThisWeek({ ps, m }) {
+  const [goal, setGoal] = useState(() => Number(store.get('weeklyGoal', '20')) || 20)
+  const [editing, setEditing] = useState(false)
+  const done = m.week.reduce((s, d) => s + d.n, 0)
+  const frac = Math.min(1, done / goal)
+  const dayMax = Math.max(1, ...m.week.map((d) => d.n))
+  const notes = useMemo(() => insights(ps, m).slice(0, 3), [ps, m])
+  const upd = (g) => { setGoal(g); store.set('weeklyGoal', String(g)) }
+  const todayKey = isoDay(new Date())
+  return (
+    <section className="panel flex flex-col gap-3.5">
+      <div className="flex items-baseline justify-between">
+        <span className="label">This week</span>
+        {editing ? (
+          <label className="sub flex items-center gap-1.5">goal
+            <input autoFocus type="number" min={1} max={500} value={goal} className="input w-14" style={{ padding: '3px 5px' }} aria-label="Weekly submission goal"
+              onChange={(e) => upd(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} onBlur={() => setEditing(false)}
+              onKeyDown={(e) => e.key === 'Enter' && setEditing(false)} />
+          </label>
+        ) : <button className="sub cursor-pointer bg-transparent" onClick={() => setEditing(true)}>goal {goal} · edit</button>}
+      </div>
+      <div className="flex items-baseline gap-2.5">
+        <span className="big" style={{ fontSize: 22, color: frac >= 1 ? 'var(--acc)' : 'var(--fg)' }}>{done} / {goal}</span>
+        <span className="sub">{frac >= 1 ? 'goal reached' : `${goal - done} submissions to go`}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-sm" style={{ background: 'var(--cellbg)' }} role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={goal}>
+        <div className="h-full" style={{ width: `${frac * 100}%`, background: 'var(--acc)' }} />
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((n, i) => {
+          const d = m.week[i]
+          return (
+            <div key={i} className="flex flex-col items-center gap-1" title={d ? `${d.n} submission${d.n === 1 ? '' : 's'}` : ''}>
+              <div className="flex h-9 w-full items-end">
+                <div className="w-full rounded-sm" style={{ height: d?.n ? `${Math.max(12, (100 * d.n) / dayMax)}%` : 2, background: d?.n ? 'var(--acc)' : 'var(--line2)', opacity: d?.n ? 0.85 : 1 }} />
+              </div>
+              <span className="sub" style={{ color: d?.day === todayKey ? 'var(--fg)' : undefined }}>{n}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="row-line flex flex-wrap gap-x-7 gap-y-3 pt-3.5">
+        <Stat label="Streak" value={`${m.streak.current}d`} size={18} color="var(--acc)" hint={`best ${m.streak.longest}d`} />
+        <Stat label="Last active" value={m.lastActive ? rel(m.lastActive) : '—'} size={18} />
+      </div>
+      {notes.length > 0 && (
+        <ul className="row-line flex flex-col gap-2 pt-3.5" style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--dim)' }}>
+          {notes.map((n) => <li key={n} className="flex gap-2"><span style={{ color: 'var(--acc)' }}>›</span><span>{n}</span></li>)}
+        </ul>
       )}
-    </a>
+    </section>
   )
 }
 
 /** Last-12-months calendar; shade = total submissions, tooltip splits by platform. With one id, shades in that platform's colour. */
-function Heatmap({ daily, ids, label = 'Combined activity · last 12 months' }) {
+function Heatmap({ daily, ids, m, label = 'Activity · last 12 months · all platforms' }) {
   const C = useTheme()
   const [bind, tipNode, hov] = useHoverTip()
   const today = new Date()
@@ -251,90 +317,41 @@ function Heatmap({ daily, ids, label = 'Combined activity · last 12 months' }) 
         </svg>
       </div>
       {ids.length > 1 && (
-        <div className="mt-3 flex flex-wrap gap-3 sub">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 sub">
           {ids.map((id) => {
             const n = cells.reduce((s, c) => s + (c.by[id] ?? 0), 0)
-            return <span key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name} · {n.toLocaleString()} submissions</span>
+            return <span key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name} {n.toLocaleString()}</span>
           })}
+        </div>
+      )}
+      {m && (
+        <div className="mt-4 grid grid-cols-2 gap-4 pt-4 row-line sm:grid-cols-3 lg:grid-cols-5">
+          <Stat label="Submissions" value={m.subsYear.toLocaleString()} size={18} />
+          <Stat label="Active days" value={m.activeDays} size={18} hint={`${Math.round((100 * m.activeDays) / cells.length)}% of days`} />
+          <Stat label="Streak" value={`${m.streak.current}d`} size={18} color="var(--acc)" hint={`longest ${m.streak.longest}d`} />
+          <Stat label="Contests" value={m.contests.length} size={18} hint={`${m.contests.filter((c) => c.t * 1000 > start.getTime()).length} this year`} />
+          <Stat label="Last active" value={m.lastActive ? rel(m.lastActive) : '—'} size={18} />
         </div>
       )}
     </Panel>
   )
 }
 
-function WeeklyGoal({ m }) {
-  const [goal, setGoal] = useState(() => Number(store.get('weeklyGoal', '20')) || 20)
-  const done = m.week.reduce((s, d) => s + d.n, 0)
-  const pctDone = Math.min(1, done / goal)
-  const dayMax = Math.max(1, ...m.week.map((d) => d.n))
-  const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const upd = (g) => { setGoal(g); store.set('weeklyGoal', String(g)) }
+function Ratings({ ps }) {
+  const [pick, setPick] = useState(() => [...ps].sort((a, b) => b.contests.length - a.contests.length)[0].platform)
+  const p = ps.find((x) => x.platform === pick) ?? ps[0]
+  const best = p.contests.filter((c) => c.delta != null).reduce((b, c) => (!b || c.delta > b.delta ? c : b), null)
   return (
-    <Panel label="Weekly goal · submissions, all platforms" right={
-      <label className="sub flex items-center gap-2">target
-        <input type="number" min={1} max={500} value={goal} onChange={(e) => upd(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
-          className="input w-16" style={{ padding: '4px 6px' }} aria-label="Weekly submission target" />
-      </label>}>
-      <div className="flex items-baseline gap-2">
-        <span className="big" style={{ fontSize: 34, color: pctDone >= 1 ? 'var(--acc)' : 'var(--fg)' }}>{done}</span>
-        <span style={{ color: 'var(--dim)' }}>/ {goal} this week</span>
-        <span className="sub ml-auto">{pctDone >= 1 ? '✓ goal reached' : `${goal - done} to go`}</span>
+    <Panel label={`Rating history · ${p.name} · ${p.contests.length} contests`}
+      right={ps.length > 1 && <Seg options={ps.map((x) => [x.platform, PLAT[x.platform].short])} value={p.platform} onChange={setPick} />}>
+      <div className="mb-4 flex flex-wrap gap-x-7 gap-y-3">
+        <Stat label="Now" value={p.rating ?? '—'} size={18} color={pColor(p.platform)} hint={p.title} />
+        <Stat label="Peak" value={p.maxRating ?? '—'} size={18} />
+        <Stat label="Best gain" value={best ? signed(best.delta) : '—'} size={18} color="var(--acc)" hint={best?.name} />
+        <Stat label="Last 5" value={signed(p.contests.slice(-5).reduce((s, c) => s + (c.delta ?? 0), 0))} size={18} hint="net change" />
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded" style={{ background: 'var(--cellbg)' }} role="progressbar" aria-valuenow={done} aria-valuemax={goal}>
-        <div className="h-full rounded" style={{ width: `${pctDone * 100}%`, background: 'var(--acc)', transition: 'width .3s' }} />
-      </div>
-      <div className="mt-4 grid grid-cols-7 gap-2">
-        {names.map((n, i) => {
-          const d = m.week[i]
-          return (
-            <div key={n} className="flex flex-col items-center gap-1.5">
-              <div className="flex h-16 w-full items-end">
-                <div className="w-full rounded-t" title={d ? `${d.n} on ${n}` : 'upcoming'}
-                  style={{ height: d?.n ? `${Math.max(8, (100 * d.n) / dayMax)}%` : 2, background: d?.n ? 'var(--acc2)' : 'var(--line2)' }} />
-              </div>
-              <span className="sub" style={{ color: d?.day === isoDay(new Date()) ? 'var(--fg)' : undefined }}>{n}</span>
-              <span className="sub tabular-nums">{d ? d.n : ''}</span>
-            </div>
-          )
-        })}
-      </div>
-    </Panel>
-  )
-}
-
-function SolvedShare({ ps }) {
-  const total = ps.reduce((s, p) => s + p.solved, 0)
-  const max = Math.max(1, ...ps.map((p) => p.solved))
-  return (
-    <Panel label="Solved by platform">
-      <div className="flex flex-col gap-3">
-        {[...ps].sort((a, b) => b.solved - a.solved).map((p) => (
-          <div key={p.platform} className="grid items-center gap-3" style={{ gridTemplateColumns: '92px 1fr 88px', fontSize: 11.5 }}>
-            <span className="truncate">{p.name}</span>
-            <div className="h-3.5 rounded-r" style={{ width: `${Math.max(1, (100 * p.solved) / max)}%`, background: pColor(p.platform) }} />
-            <span className="text-right tabular-nums"><b>{p.solved.toLocaleString()}</b> <span className="sub">{total ? Math.round((100 * p.solved) / total) : 0}%</span></span>
-          </div>
-        ))}
-      </div>
-      <p className="sub mt-4">Each judge counts distinct accepted problems its own way; CodeChef’s figure is read from its profile page.</p>
-    </Panel>
-  )
-}
-
-function RatingGrid({ ps }) {
-  return (
-    <Panel label="Rating journeys · each on its own scale">
-      <div className={`grid gap-4 ${ps.length > 1 ? 'md:grid-cols-2' : ''}`}>
-        {ps.map((p) => (
-          <div key={p.platform} className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="label" style={{ color: 'var(--fg)' }}><span style={{ color: pColor(p.platform) }}>■</span> {p.name}</span>
-              <span className="sub">{p.rating ?? '—'} now · peak {p.maxRating ?? '—'}</span>
-            </div>
-            <RatingLine p={p} height={170} />
-          </div>
-        ))}
-      </div>
+      <RatingLine p={p} height={260} />
+      {ps.length > 1 && <p className="sub mt-2">Each site uses its own rating scale, so switch between them rather than overlaying.</p>}
     </Panel>
   )
 }
@@ -370,131 +387,80 @@ function RatingLine({ p, height }) {
   )
 }
 
-const LEVEL_OP = { easy: 0.4, medium: 0.7, hard: 1 }
-
-function DiffRow({ name, by, total, color, bind }) {
-  return (
-    <div className="grid items-center gap-3" style={{ gridTemplateColumns: '92px 1fr 52px', fontSize: 11.5 }}>
-      <span className="truncate">{name}</span>
-      <div className="flex h-4 gap-[2px]">
-        {['easy', 'medium', 'hard'].map((k) => by[k] > 0 && (
-          <div key={k} className="h-full first:rounded-l last:rounded-r" style={{ width: `${(100 * by[k]) / total}%`, background: color, opacity: LEVEL_OP[k] }}
-            {...bind(() => <TipBox title={`${name} · ${k}`}><div><b>{by[k]}</b> solved · {Math.round((100 * by[k]) / total)}%</div></TipBox>)} />
-        ))}
-      </div>
-      <span className="text-right tabular-nums sub">{total}</span>
-    </div>
-  )
-}
+const LEVELS = [['easy', 0.35], ['medium', 0.65], ['hard', 1]]
 
 function DifficultyMix({ ps }) {
-  const [bind, tipNode] = useHoverTip()
   const rows = ps.map((p) => {
     const by = { easy: 0, medium: 0, hard: 0 }
     for (const d of p.difficulty) if (d.level) by[d.level] += d.count
     return { p, by, total: by.easy + by.medium + by.hard }
   }).filter((r) => r.total)
-  const all = { easy: 0, medium: 0, hard: 0 }
-  for (const r of rows) for (const k in all) all[k] += r.by[k]
-  const allTotal = all.easy + all.medium + all.hard
   return (
-    <Panel label="Difficulty mix · easy / medium / hard" right={<span className="sub">lighter → harder</span>}>
-      {tipNode}
+    <Panel label="Difficulty" right={
+      <span className="sub flex gap-3">{LEVELS.map(([k, o]) => <span key={k} className="flex items-center gap-1"><span className="inline-block size-2 rounded-sm" style={{ background: 'var(--fg)', opacity: o }} />{k}</span>)}</span>}>
       {!rows.length ? <Empty>No difficulty data yet.</Empty> : (
-        <div className="flex flex-col gap-3">
-          {rows.map((r) => <DiffRow bind={bind} key={r.p.platform} name={r.p.name} by={r.by} total={r.total} color={pColor(r.p.platform)} />)}
-          {rows.length > 1 && <div className="row-line pt-3"><DiffRow bind={bind} name="All" by={all} total={allTotal} color="var(--fg)" /></div>}
-          <p className="sub">
-            Codeforces: &lt;1600 easy, 1600–1999 medium, 2000+ hard · AtCoder: below cyan easy, cyan/blue medium, yellow+ hard · LeetCode: its own labels.
-            {ps.some((p) => p.platform === 'cc') && ' CodeChef doesn’t expose per-problem difficulty.'}
-          </p>
+        <div className="flex flex-col gap-4">
+          {rows.map(({ p, by, total }) => (
+            <div key={p.platform} className="flex flex-col gap-1.5">
+              <div className="flex items-baseline justify-between" style={{ fontSize: 11.5 }}>
+                <span>{p.name}</span><span className="sub tabular-nums">{total} rated solves</span>
+              </div>
+              <div className="flex h-5 gap-[2px] overflow-hidden rounded-sm">
+                {LEVELS.map(([k, o]) => by[k] > 0 && (
+                  <div key={k} className="flex items-center px-1.5" title={`${k}: ${by[k]}`}
+                    style={{ flex: by[k], background: `color-mix(in srgb, ${pColor(p.platform)} ${o * 100}%, var(--panel))` }}>
+                    {by[k] / total > 0.12 && <span className="font-bold tabular-nums" style={{ fontSize: 9.5, color: o > 0.5 ? 'var(--bg)' : 'var(--fg)' }}>{by[k]}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="sub">Codeforces &lt;1600 easy, 1600–1999 medium, 2000+ hard. AtCoder below cyan easy, cyan–blue medium, yellow+ hard. LeetCode uses its own labels.
+            {ps.some((p) => p.platform === 'cc') && ' CodeChef doesn’t publish per-problem difficulty.'}</p>
         </div>
       )}
     </Panel>
   )
 }
 
-function ContestsPerMonth({ contests, ids }) {
-  const C = useTheme()
-  const data = contestsByMonth(contests)
-  const shown = ids.filter((id) => data.some((r) => r[id]))
-  return (
-    <Panel label="Contests per month · last 2 years" right={
-      <span className="sub flex flex-wrap gap-3">{shown.map((id) => <span key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name}</span>)}</span>}>
-      {!shown.length ? <Empty>No contests in the last two years.</Empty> : (
-        <div style={{ height: 220 }}>
-          <ResponsiveContainer>
-            <BarChart data={data} margin={{ top: 6, right: 4, left: -24, bottom: 0 }} barCategoryGap={2}>
-              <CartesianGrid stroke={C.grid} vertical={false} />
-              <XAxis dataKey="key" {...axisProps(C)} tickFormatter={(k) => data.find((r) => r.key === k)?.label} interval={2} />
-              <YAxis allowDecimals={false} width={40} {...axisProps(C)} />
-              <Tooltip cursor={{ fill: C.grid }} wrapperStyle={chartTipWrapper}
-                content={<ChartTip title={(d) => `${d.label} ${d.year}`} rows={(d) => shown.map((id) => (
-                  <div key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name} <b>{d[id] ?? 0}</b></div>
-                ))} />} />
-              {shown.map((id, i) => (
-                <Bar key={id} dataKey={id} stackId="c" fill={C[`p-${id}`]} stroke={C.panel} strokeWidth={1} isAnimationActive={false}
-                  radius={i === shown.length - 1 ? [3, 3, 0, 0] : 0} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </Panel>
-  )
-}
-
-function Topics({ m, ids }) {
-  const [n, setN] = useState(14)
+function Topics({ m, ps }) {
+  const [n, setN] = useState(12)
   const [bind, tipNode] = useHoverTip()
+  const ids = ps.filter((p) => p.tags.length).map((p) => p.platform)
   const rows = m.topics.slice(0, n)
   const max = Math.max(1, ...rows.map((r) => r.total))
+  const cfRating = ps.find((p) => p.platform === 'cf')?.rating
+  const weak = CORE.map((t) => m.topics.find((x) => x.topic === t) ?? { topic: t, total: 0 }).sort((a, b) => a.total - b.total).slice(0, 4)
   return (
-    <Panel label="Topics · solved, merged across platforms" right={<Seg options={[[14, 'top 14'], [30, 'top 30']]} value={n} onChange={setN} />}>
+    <Panel label="Topics · solved across platforms" right={m.topics.length > 12 && <Seg options={[[12, 'top 12'], [30, 'top 30']]} value={n} onChange={setN} />}>
       {tipNode}
       {!rows.length ? <Empty>No topic data. Codeforces and LeetCode report tags; AtCoder and CodeChef don’t.</Empty> : (
-        <>
-          <div className="mb-3 flex flex-wrap gap-3 sub">{ids.map((id) => <span key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name}</span>)}</div>
-          <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
             {rows.map((r) => (
-              <div key={r.topic} className="hovrow grid items-center gap-3 px-1 py-0.5" style={{ gridTemplateColumns: '130px 1fr 40px', fontSize: 10.5 }}
+              <div key={r.topic} className="hovrow grid items-center gap-3 px-1 py-1" style={{ gridTemplateColumns: '128px 1fr 40px', fontSize: 10.5 }}
                 {...bind(() => (
                   <TipBox title={r.topic}>
                     {ids.filter((id) => r[id]).map((id) => <div key={id}><span style={{ color: pColor(id) }}>■</span> {PLAT[id].name} <b>{r[id]}</b></div>)}
                   </TipBox>
                 ))}>
                 <span className="truncate text-right" title={r.topic}>{r.topic}</span>
-                <div className="flex h-3 gap-[2px]" style={{ width: `${(100 * r.total) / max}%` }}>
-                  {ids.filter((id) => r[id]).map((id) => <div key={id} className="h-full first:rounded-l last:rounded-r" style={{ flex: r[id], background: pColor(id) }} />)}
+                <div className="flex h-2.5 gap-[2px]" style={{ width: `${(100 * r.total) / max}%` }}>
+                  {ids.filter((id) => r[id]).map((id) => <div key={id} className="h-full rounded-sm" style={{ flex: r[id], background: pColor(id) }} />)}
                 </div>
                 <span className="text-right font-bold tabular-nums">{r.total}</span>
               </div>
             ))}
           </div>
-          <p className="sub mt-3">Tag names are unified (e.g. LeetCode “Dynamic Programming” + Codeforces “dp”). A problem with several tags counts toward each.</p>
-        </>
-      )}
-    </Panel>
-  )
-}
-
-function Practice({ m, ps }) {
-  const cfRating = ps.find((p) => p.platform === 'cf')?.rating
-  const weak = CORE.map((t) => m.topics.find((x) => x.topic === t) ?? { topic: t, total: 0 }).sort((a, b) => a.total - b.total).slice(0, 6)
-  const cf = ps.find((p) => p.platform === 'cf')
-  return (
-    <Panel label="Practice next · least-covered core topics">
-      {!m.topics.length ? <Empty>Connect Codeforces or LeetCode to get topic suggestions.</Empty> : (
-        <div className="flex flex-col">
-          {weak.map((w, i) => (
-            <div key={w.topic} className={`flex flex-wrap items-center gap-2 py-2.5 ${i ? 'row-line' : ''}`} style={{ fontSize: 11.5 }}>
-              <span className="flex-1">{w.topic} <span className="sub">· {w.total} solved</span></span>
-              {practiceLinks(w.topic, cfRating).map(([name, url]) => (
-                <a key={name} className="chip" href={url} target="_blank" rel="noreferrer">{name} ↗</a>
-              ))}
-            </div>
-          ))}
-          {cf && <a className="btn mt-3 self-start" href={`#/u/${cf.handle}/weak`}>Codeforces weak-topic deep dive →</a>}
+          <div className="row-line flex flex-col gap-2 pt-4">
+            <span className="label" style={{ fontSize: 9.5 }}>Practice next · least-solved core topics</span>
+            {weak.map((w) => (
+              <div key={w.topic} className="flex flex-wrap items-center gap-2" style={{ fontSize: 11.5 }}>
+                <span className="flex-1">{w.topic} <span className="sub">· {w.total} solved</span></span>
+                {practiceLinks(w.topic, cfRating).map(([name, url]) => <a key={name} className="chip" href={url} target="_blank" rel="noreferrer">{name} ↗</a>)}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </Panel>
@@ -555,14 +521,16 @@ export function Upcoming({ compact, filter }) {
           {!shown.length ? <Empty>No upcoming contests for the selected platforms.</Empty> : (
             <div className={`flex flex-col ${compact ? 'max-h-[360px] overflow-y-auto' : ''}`}>
               {shown.map((c, i) => (
-                <div key={`${c.platform}${c.start}${c.name}`} className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 ${i ? 'row-line' : ''}`} style={{ fontSize: 11.5 }}>
-                  <span className="w-7 flex-none font-bold" style={{ fontSize: 9.5 }}><span style={{ color: pColor(c.platform) }}>■</span> {PLAT[c.platform].short}</span>
-                  <a className="min-w-0 flex-1 truncate" style={{ color: 'var(--fg)' }} href={c.url} target="_blank" rel="noreferrer" title={c.name}>{c.name}</a>
-                  <span className="sub whitespace-nowrap">
-                    {new Date(c.start * 1000).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {dur(c.duration)}
-                  </span>
-                  <span className="w-20 text-right font-bold whitespace-nowrap" style={{ fontSize: 10.5, color: c.start < Date.now() / 1000 + 86400 ? 'var(--acc)' : 'var(--dim)' }}>{countdown(c.start)}</span>
-                  <a className="chip" href={gcalLink(c)} target="_blank" rel="noreferrer" title="Add to Google Calendar">+ cal</a>
+                <div key={`${c.platform}${c.start}${c.name}`} className={`flex items-center gap-3 py-2.5 ${i ? 'row-line' : ''}`} style={{ fontSize: 11.5 }}>
+                  <span className="size-2 flex-none rounded-full" style={{ background: pColor(c.platform) }} title={PLAT[c.platform].name} />
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <a style={{ color: 'var(--fg)' }} href={c.url} target="_blank" rel="noreferrer">{c.name}</a>
+                    <span className="sub">
+                      {PLAT[c.platform].name} · {new Date(c.start * 1000).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {dur(c.duration)}
+                      {' · '}<a href={gcalLink(c)} target="_blank" rel="noreferrer">add to calendar</a>
+                    </span>
+                  </div>
+                  <span className="flex-none text-right font-bold whitespace-nowrap tabular-nums" style={{ fontSize: 10.5, color: c.start < Date.now() / 1000 + 86400 ? 'var(--acc)' : 'var(--dim)' }}>{countdown(c.start)}</span>
                 </div>
               ))}
             </div>

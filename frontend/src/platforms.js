@@ -133,23 +133,6 @@ export function combine(ps) {
   }
 }
 
-/** Contests per month, last `n` months, one key per platform. */
-export function contestsByMonth(contests, n = 24) {
-  const now = new Date()
-  const rows = []
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    rows.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString(undefined, { month: 'short' }), year: d.getFullYear() })
-  }
-  const idx = Object.fromEntries(rows.map((r, i) => [r.key, i]))
-  for (const c of contests) {
-    const d = new Date(c.t * 1000)
-    const i = idx[`${d.getFullYear()}-${d.getMonth()}`]
-    if (i != null) rows[i][c.platform] = (rows[i][c.platform] ?? 0) + 1
-  }
-  return rows
-}
-
 /** Short plain-language observations over the combined data. */
 export function insights(ps, m) {
   const out = []
