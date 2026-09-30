@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Compare from './Compare'
+import Hub, { Upcoming } from './Hub'
 import Profile from './Dashboard'
 import { HANDLE_RE, timeAgo } from './lib'
 import { ThemeCtx, readTheme } from './ui'
@@ -79,6 +80,7 @@ function Home() {
       <p className="sub">
         try {['tourist', 'jiangly', 'Um_nik'].map((h) => <a key={h} href={`#/u/${h}/dash`} className="mx-1.5">{h}</a>)}
         · <a href={`#/compare/${store.get('handle', '')}/`}>compare two</a>
+        · <a href="#/hub">all platforms</a>
       </p>
 
       {/* Official Footer Banner */}
@@ -142,6 +144,10 @@ export default function App() {
               <span>Compare handles</span>
               <span style={{ color: 'var(--acc)' }}>⇄</span>
             </a>
+            <a href="#/hub" className={`btn flex items-center justify-between text-xs py-1.5 px-2.5 mb-1 ${page === 'hub' || page === 'upcoming' ? 'on' : ''}`} style={{ color: 'var(--fg)' }}>
+              <span>All platforms</span>
+              <span style={{ color: 'var(--acc)' }}>◆</span>
+            </a>
             <div className="flex justify-between uppercase pt-1" style={{ font: "400 9.5px/1.4 'JetBrains Mono'", color: 'var(--faint)', borderTop: '1px solid var(--line2)' }}>
               <span>{sync ? 'synced' : 'cf::visualizer'}</span><span>{sync ? timeAgo(sync.at / 1000) : ''}</span>
             </div>
@@ -154,6 +160,9 @@ export default function App() {
             <Terminal handle={page === 'u' ? args[0] : last || undefined} tab={active} />
             <span className="hidden sm:inline" style={{ font: "400 10px/1 'JetBrains Mono'", color: 'var(--faint)', letterSpacing: '.1em' }}>↵ FETCH</span>
             <div className="hidden flex-1 sm:block" />
+            <a href="#/hub" className="btn flex items-center gap-1.5 flex-none md:hidden" title="All platforms">
+              ◆<span className="hidden sm:inline">Platforms</span>
+            </a>
             <a href="https://github.com/Nandansai08/cf-visualizer" target="_blank" rel="noreferrer" className="btn flex items-center gap-1.5 flex-none" title="View source on GitHub">
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
@@ -183,6 +192,10 @@ export default function App() {
           <div className="w-full max-w-[1400px] px-4 sm:px-[26px] py-6">
             {page === 'u' && args[0] ? (
               <Profile key={args[0]} handle={args[0]} tab={args[1] || 'dash'} sub={args[2]} />
+            ) : page === 'hub' ? (
+              <Hub key={args[0] ?? ''} spec={args[0]} view={args[1]} />
+            ) : page === 'upcoming' ? (
+              <Upcoming />
             ) : page === 'compare' ? (
               <Compare key={args.join('/')} a={args[0]} b={args[1]} />
             ) : (

@@ -7,6 +7,8 @@
   --fg: #e7ecf3; --dim: #828d9c; --faint: #565f6b; --acc: #4ade80; --acc2: #22d3ee;
   --warn: #fbbf24; --bad: #f87171; --grid: rgba(255, 255, 255, 0.045); --cellbg: #12161a;
   color-scheme: dark;
+  /* platform identity in the hub: reuses each look's own accents */
+  --p-cf: var(--acc); --p-lc: var(--warn); --p-ac: var(--acc2); --p-cc: #c084fc;
 }
 [data-look='amber'] {
   --bg: #0b0906; --panel: #12100b; --panel2: #181509; --line: #2a2213; --line2: #3d3320;
@@ -16,6 +18,7 @@
 }
 [data-look='daylight'] {
   --bg: #f4f5f7; --panel: #ffffff; --panel2: #f0f2f5; --line: #e2e5ea; --line2: #cdd3db;
+  --p-cc: #8b5cf6;
   --fg: #14181d; --dim: #5d6771; --faint: #8b959f; --acc: #12855a; --acc2: #0d7ea8;
   --warn: #b7791f; --bad: #c53030; --grid: rgba(0, 0, 0, 0.04); --cellbg: #eceff3;
   color-scheme: light;
