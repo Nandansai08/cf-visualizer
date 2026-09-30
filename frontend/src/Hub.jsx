@@ -547,6 +547,20 @@ export function Upcoming({ compact, filter }) {
 
 // ---------------- one platform ----------------
 
+/** Profile photo, or the handle's initials when there is none (CF's "no-title" placeholder) or it fails to load. */
+function Avatar({ p }) {
+  const [broken, setBroken] = useState(false)
+  const src = p.avatar?.startsWith('//') ? `https:${p.avatar}` : p.avatar
+  const none = broken || !src || /no-title|no-avatar|default/i.test(src)
+  return (
+    <div className="grid size-16 flex-none place-items-center overflow-hidden rounded-lg" style={{ border: '1px solid var(--line2)', background: 'var(--panel2)' }}>
+      {none
+        ? <span className="big" style={{ fontSize: 20, color: pColor(p.platform) }}>{p.handle.slice(0, 2).toUpperCase()}</span>
+        : <img src={src} alt={`${p.handle} avatar`} className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={() => setBroken(true)} />}
+    </div>
+  )
+}
+
 function PlatformView({ p }) {
   const C = useTheme()
   const daily = useMemo(() => Object.fromEntries(Object.entries(p.daily).map(([d, n]) => [d, { [p.platform]: n }])), [p])
@@ -558,7 +572,7 @@ function PlatformView({ p }) {
   return (
     <div className="grid gap-4">
       <section className="panel flex flex-wrap items-center gap-5" style={{ borderLeft: `3px solid ${pColor(p.platform)}` }}>
-        {p.avatar && <img src={p.avatar.startsWith('//') ? `https:${p.avatar}` : p.avatar} alt="" className="size-16 rounded-lg object-cover" referrerPolicy="no-referrer" />}
+        <Avatar p={p} />
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="label">{p.name}</span>
           <a href={p.url} target="_blank" rel="noreferrer" className="big truncate" style={{ fontSize: 26, color: 'var(--fg)' }}>{p.handle} ↗</a>
