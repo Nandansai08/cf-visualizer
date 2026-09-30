@@ -92,12 +92,13 @@ function HubView({ acc, ids, view }) {
           </a>
         ))}
         <div className="flex-1" />
-        <a href={`#/hub/${spec}/connect`} className="btn">Edit accounts</a>
-        <button className="btn" onClick={share}>{copied ? 'Link copied' : 'Copy share link'}</button>
-        <button className="btn" disabled={!loaded.length}
-          onClick={() => download(`coding-profile-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ accounts: acc, profiles: loaded }, null, 2))}>
-          Export JSON
-        </button>
+        <span className="sub flex flex-wrap items-center gap-3">
+          <a href={`#/hub/${spec}/connect`}>edit accounts</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); share() }}>{copied ? 'link copied' : 'copy link'}</a>
+          {loaded.length > 0 && (
+            <a href="#" onClick={(e) => { e.preventDefault(); download(`coding-profile-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ accounts: acc, profiles: loaded }, null, 2)) }}>export json</a>
+          )}
+        </span>
       </div>
       {pending.length > 0 && (
         <span className="sub flex items-center gap-2">
@@ -123,13 +124,13 @@ function Combined({ ps, spec }) {
   const notes = useMemo(() => insights(ps, m), [ps, m])
   return (
     <>
-      <section className="panel grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Problems solved" value={m.solved.toLocaleString()} size={28} hint={`across ${ps.length} platform${ps.length > 1 ? 's' : ''}`} />
-        <Stat label="Contests" value={m.contests.length} size={28} hint={`${m.contests.filter((c) => c.t > Date.now() / 1000 - 365 * 864e2).length} in the last year`} />
-        <Stat label="Streak" value={`${m.streak.current}d`} size={28} color="var(--acc)" hint={`longest ${m.streak.longest}d (last year)`} />
-        <Stat label="Active days" value={m.activeDays} size={28} hint="last 12 months" />
-        <Stat label="Submissions" value={m.subsYear.toLocaleString()} size={28} hint="last 12 months" />
-        <Stat label="Last active" value={m.lastActive ? rel(m.lastActive) : '—'} size={28} hint={m.lastActive ? fmtDate(new Date(`${m.lastActive}T00:00`) / 1000) : 'no recent activity'} />
+      <section className="panel grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Problems solved" value={m.solved.toLocaleString()} hint={`across ${ps.length} platform${ps.length > 1 ? 's' : ''}`} />
+        <Stat label="Contests" value={m.contests.length} hint={`${m.contests.filter((c) => c.t > Date.now() / 1000 - 365 * 864e2).length} in the last year`} />
+        <Stat label="Streak" value={`${m.streak.current}d`} color="var(--acc)" hint={`longest ${m.streak.longest}d (last year)`} />
+        <Stat label="Active days" value={m.activeDays} hint="last 12 months" />
+        <Stat label="Submissions" value={m.subsYear.toLocaleString()} hint="last 12 months" />
+        <Stat label="Last active" value={m.lastActive ? rel(m.lastActive) : '—'} hint={m.lastActive ? fmtDate(new Date(`${m.lastActive}T00:00`) / 1000) : 'no recent activity'} />
       </section>
 
       <div className={`grid gap-4 sm:grid-cols-2 ${ps.length > 2 ? 'xl:grid-cols-4' : ''}`}>

@@ -14,11 +14,6 @@ const TABS = [
   ['blogs', '05', 'Blogs', 'Blogs', '✎'],
 ]
 const TAB_IDS = TABS.map(([t]) => t)
-// cross-platform pages, listed above the per-handle Codeforces tabs
-const GLOBAL = [
-  ['hub', '◆', 'All platforms · Hub', 'Hub', '◆'],
-  ['upcoming', '◇', 'Upcoming contests', 'Soon', '◇'],
-]
 const LOOKS = ['phosphor', 'amber', 'daylight']
 
 function useRoute() {
@@ -80,15 +75,12 @@ function Home() {
       </div>
       <p style={{ color: 'var(--dim)', lineHeight: 1.8 }}>
         Rating history, problem ladder, submission history, contest post-mortems, weak-topic clusters, and a personal predictor — for any handle.
-        Or connect every judge you use for one combined dashboard with streaks, goals, topics and a shared contest calendar.
       </p>
       <Terminal big />
-      <a href="#/hub" className="btn on" style={{ padding: '11px 16px' }}>
-        ◆ Connect Codeforces · LeetCode · AtCoder · CodeChef — see them combined
-      </a>
       <p className="sub">
         try {['tourist', 'jiangly', 'Um_nik'].map((h) => <a key={h} href={`#/u/${h}/dash`} className="mx-1.5">{h}</a>)}
         · <a href={`#/compare/${store.get('handle', '')}/`}>compare two</a>
+        · <a href="#/hub">all platforms</a>
       </p>
 
       {/* Official Footer Banner */}
@@ -120,7 +112,7 @@ export default function App() {
 
   const active = page === 'u' ? (args[1] === 'predict' ? 'contests' : args[1] || 'dash') : page
   const hrefFor = (t) =>
-    t === 'compare' ? `#/compare/${last}/` : t === 'hub' ? '#/hub' : t === 'upcoming' ? '#/upcoming' : last ? `#/u/${last}/${t}` : '#/'
+    t === 'compare' ? `#/compare/${last}/` : last ? `#/u/${last}/${t}` : '#/'
   const pickLook = (l) => {
     document.documentElement.dataset.look = l // set before render so readTheme sees it
     store.set('look', l)
@@ -138,13 +130,6 @@ export default function App() {
             </span>
             <span className="label" style={{ fontSize: 9.5, color: 'var(--faint)', paddingLeft: 17 }}>profile analytics</span>
           </a>
-          {GLOBAL.map(([t, num, label]) => (
-            <a key={t} href={hrefFor(t)} className={`nav-tab ${active === t ? 'active' : ''}`}>
-              <span className="nav-num" style={{ color: active === t ? 'var(--acc)' : 'var(--faint)', fontSize: 9.5 }}>{num}</span>
-              <span className="truncate">{label}</span>
-            </a>
-          ))}
-          <span className="label px-[18px] pb-1 pt-4" style={{ fontSize: 9, color: 'var(--faint)' }}>Codeforces · {last || 'handle'}</span>
           {TABS.map(([t, num, label]) => {
             const on = active === t
             return (
@@ -159,6 +144,10 @@ export default function App() {
               <span>Compare handles</span>
               <span style={{ color: 'var(--acc)' }}>⇄</span>
             </a>
+            <a href="#/hub" className={`btn flex items-center justify-between text-xs py-1.5 px-2.5 mb-1 ${page === 'hub' || page === 'upcoming' ? 'on' : ''}`} style={{ color: 'var(--fg)' }}>
+              <span>All platforms</span>
+              <span style={{ color: 'var(--acc)' }}>◆</span>
+            </a>
             <div className="flex justify-between uppercase pt-1" style={{ font: "400 9.5px/1.4 'JetBrains Mono'", color: 'var(--faint)', borderTop: '1px solid var(--line2)' }}>
               <span>{sync ? 'synced' : 'cf::visualizer'}</span><span>{sync ? timeAgo(sync.at / 1000) : ''}</span>
             </div>
@@ -171,6 +160,9 @@ export default function App() {
             <Terminal handle={page === 'u' ? args[0] : last || undefined} tab={active} />
             <span className="hidden sm:inline" style={{ font: "400 10px/1 'JetBrains Mono'", color: 'var(--faint)', letterSpacing: '.1em' }}>↵ FETCH</span>
             <div className="hidden flex-1 sm:block" />
+            <a href="#/hub" className="btn flex items-center gap-1.5 flex-none md:hidden" title="All platforms">
+              ◆<span className="hidden sm:inline">Platforms</span>
+            </a>
             <a href="https://github.com/Nandansai08/cf-visualizer" target="_blank" rel="noreferrer" className="btn flex items-center gap-1.5 flex-none" title="View source on GitHub">
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
@@ -183,9 +175,9 @@ export default function App() {
             </button>
           </header>
           {/* phones: bottom tab bar, always visible and in thumb reach */}
-          <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 md:hidden"
+          <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 md:hidden"
             style={{ borderTop: '1px solid var(--line)', background: 'color-mix(in srgb, var(--panel) 92%, transparent)', backdropFilter: 'blur(10px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            {[GLOBAL[0], ...TABS, ['compare', '', 'Compare', 'Compare', '⇄']].map(([t, , , short, glyph]) => {
+            {[...TABS, ['compare', '', 'Compare', 'Compare', '⇄']].map(([t, , , short, glyph]) => {
               const on = active === t
               return (
                 <a key={t} href={hrefFor(t)} aria-current={on ? 'page' : undefined}
