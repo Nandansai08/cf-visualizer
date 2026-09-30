@@ -6,6 +6,12 @@ Open-source Codeforces profile analytics for any handle: rating history with for
 full submission log, contest post-mortems (where the time went, tags that cost you time), weak-topic
 clusters with practice recommendations, a live rating-change estimator, blogs, and head-to-head compare.
 
+**Multi-platform hub** — connect Codeforces, LeetCode, AtCoder and CodeChef usernames and see them combined
+(total solved, combined streak and activity heatmap, per-platform rating journeys, difficulty mix, merged topic
+strengths with practice links, contests per month, weekly goal, insights, recent accepted feed) or one platform at a
+time. Hub links (`#/hub/cf:tourist,lc:neal_wu/all`) are shareable, and data can be exported as JSON.
+**Upcoming contests** from all four judges in one list, with countdowns, Google Calendar links and an `.ics` export.
+
 FastAPI backend (Codeforces proxy + cache + analytics) · React/Vite frontend · optional Chrome extension.
 Works on desktop and mobile.
 
@@ -40,7 +46,7 @@ cd frontend && npm install && npm run dev
 
 Open http://localhost:5173 (Vite proxies `/api` to :8000).
 
-Backend self-check (offline): `cd backend && python test_analytics.py`
+Backend self-check (offline): `cd backend && python test_analytics.py && python test_platforms.py`
 
 ## Deploy (Vercel)
 
@@ -70,6 +76,8 @@ profile pages get an **Open in Visualizer** button. Summaries are cached in `chr
 | `GET /api/blogs/{handle}` | blog entries, newest first |
 | `GET /api/summary/{handle}` | compact payload for the extension |
 | `GET /api/contests` | recent/running contests |
+| `GET /api/platform/{cf\|lc\|ac\|cc}/{handle}?tz=` | one judge's profile in a shared shape (rating, contests, solved, difficulty, tags, daily activity, recent ACs) |
+| `GET /api/upcoming` | upcoming contests on Codeforces, LeetCode, AtCoder and CodeChef, soonest first |
 
 ## Notes
 
@@ -77,11 +85,12 @@ profile pages get an **Open in Visualizer** button. Summaries are cached in `chr
 - Estimator matches real deltas within ~10 points on tested rounds. Other newcomers in the field are treated as internal 1400.
 - Forecast is a damped, recency-weighted linear trend: a rough estimate, labelled as such.
 - Attendance rate is approximate (name heuristic for rated rounds; parallel Div. 1/2 rounds counted once).
+- Other judges: LeetCode via its public GraphQL endpoint, AtCoder via its rating-history JSON plus [AtCoder Problems](https://github.com/kenkoooo/AtCoderProblems) (solves, difficulty), CodeChef by reading the public profile page (no user API exists, so it can break if the page changes). All share the SQLite cache; stale data is served if a judge is down.
 - Unofficial; not affiliated with Codeforces. Data comes from the public [Codeforces API](https://codeforces.com/apiHelp).
 
 ## Contributing
 
-Issues and pull requests are welcome. Keep changes small, run `python backend/test_analytics.py`
+Issues and pull requests are welcome. Keep changes small, run `python backend/test_analytics.py`, `python backend/test_platforms.py`
 and `npm run build` in `frontend/` before opening a PR.
 
 ## License

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import analytics as A
+import platforms as P
 from cf import CFError, cf, user_status
 
 
@@ -123,3 +124,19 @@ async def estimate(handle: str, contestId: int, rank: int = Query(ge=1)):
     return A.estimate_delta(field, handle, old, k, rank) | {"source": source, "contestId": contestId,
                                                            "actual": at["newRating"] - at["oldRating"] if at else None,
                                                            "actualRank": at["rank"] if at else None}
+
+
+@app.get("/api/platform/{platform}/{handle}")
+async def platform(platform: str, handle: str, tz: int = Query(0, ge=-900, le=900)):
+    """One judge's profile in the shared multi-platform shape (see platforms.py)."""
+    if platform not in P.PLATFORMS:
+        raise HTTPException(404, f"Unknown platform; use one of {', '.join(P.PLATFORMS)}")
+    if not P.HANDLE_RES[platform].match(handle):
+        raise HTTPException(400, f"That doesn't look like a {P.NAMES[platform]} username")
+    return await P.get(platform, handle, tz)
+
+
+@app.get("/api/upcoming")
+async def upcoming():
+    """Upcoming and running contests on every supported judge, soonest first."""
+    return await P.upcoming()

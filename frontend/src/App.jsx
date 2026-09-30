@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Compare from './Compare'
+import Hub, { Upcoming } from './Hub'
 import Profile from './Dashboard'
 import { HANDLE_RE, timeAgo } from './lib'
 import { ThemeCtx, readTheme } from './ui'
@@ -13,6 +14,11 @@ const TABS = [
   ['blogs', '05', 'Blogs', 'Blogs', '✎'],
 ]
 const TAB_IDS = TABS.map(([t]) => t)
+// cross-platform pages, listed above the per-handle Codeforces tabs
+const GLOBAL = [
+  ['hub', '◆', 'All platforms · Hub', 'Hub', '◆'],
+  ['upcoming', '◇', 'Upcoming contests', 'Soon', '◇'],
+]
 const LOOKS = ['phosphor', 'amber', 'daylight']
 
 function useRoute() {
@@ -74,8 +80,12 @@ function Home() {
       </div>
       <p style={{ color: 'var(--dim)', lineHeight: 1.8 }}>
         Rating history, problem ladder, submission history, contest post-mortems, weak-topic clusters, and a personal predictor — for any handle.
+        Or connect every judge you use for one combined dashboard with streaks, goals, topics and a shared contest calendar.
       </p>
       <Terminal big />
+      <a href="#/hub" className="btn on" style={{ padding: '11px 16px' }}>
+        ◆ Connect Codeforces · LeetCode · AtCoder · CodeChef — see them combined
+      </a>
       <p className="sub">
         try {['tourist', 'jiangly', 'Um_nik'].map((h) => <a key={h} href={`#/u/${h}/dash`} className="mx-1.5">{h}</a>)}
         · <a href={`#/compare/${store.get('handle', '')}/`}>compare two</a>
@@ -110,7 +120,7 @@ export default function App() {
 
   const active = page === 'u' ? (args[1] === 'predict' ? 'contests' : args[1] || 'dash') : page
   const hrefFor = (t) =>
-    t === 'compare' ? `#/compare/${last}/` : last ? `#/u/${last}/${t}` : '#/'
+    t === 'compare' ? `#/compare/${last}/` : t === 'hub' ? '#/hub' : t === 'upcoming' ? '#/upcoming' : last ? `#/u/${last}/${t}` : '#/'
   const pickLook = (l) => {
     document.documentElement.dataset.look = l // set before render so readTheme sees it
     store.set('look', l)
@@ -128,6 +138,13 @@ export default function App() {
             </span>
             <span className="label" style={{ fontSize: 9.5, color: 'var(--faint)', paddingLeft: 17 }}>profile analytics</span>
           </a>
+          {GLOBAL.map(([t, num, label]) => (
+            <a key={t} href={hrefFor(t)} className={`nav-tab ${active === t ? 'active' : ''}`}>
+              <span className="nav-num" style={{ color: active === t ? 'var(--acc)' : 'var(--faint)', fontSize: 9.5 }}>{num}</span>
+              <span className="truncate">{label}</span>
+            </a>
+          ))}
+          <span className="label px-[18px] pb-1 pt-4" style={{ fontSize: 9, color: 'var(--faint)' }}>Codeforces · {last || 'handle'}</span>
           {TABS.map(([t, num, label]) => {
             const on = active === t
             return (
@@ -166,9 +183,9 @@ export default function App() {
             </button>
           </header>
           {/* phones: bottom tab bar, always visible and in thumb reach */}
-          <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 md:hidden"
+          <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-7 md:hidden"
             style={{ borderTop: '1px solid var(--line)', background: 'color-mix(in srgb, var(--panel) 92%, transparent)', backdropFilter: 'blur(10px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            {[...TABS, ['compare', '', 'Compare', 'Compare', '⇄']].map(([t, , , short, glyph]) => {
+            {[GLOBAL[0], ...TABS, ['compare', '', 'Compare', 'Compare', '⇄']].map(([t, , , short, glyph]) => {
               const on = active === t
               return (
                 <a key={t} href={hrefFor(t)} aria-current={on ? 'page' : undefined}
@@ -183,6 +200,10 @@ export default function App() {
           <div className="w-full max-w-[1400px] px-4 sm:px-[26px] py-6">
             {page === 'u' && args[0] ? (
               <Profile key={args[0]} handle={args[0]} tab={args[1] || 'dash'} sub={args[2]} />
+            ) : page === 'hub' ? (
+              <Hub key={args[0] ?? ''} spec={args[0]} view={args[1]} />
+            ) : page === 'upcoming' ? (
+              <Upcoming />
             ) : page === 'compare' ? (
               <Compare key={args.join('/')} a={args[0]} b={args[1]} />
             ) : (

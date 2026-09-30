@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api, rankColor } from './lib'
 
-const KEYS = ['bg', 'panel', 'panel2', 'line', 'line2', 'fg', 'dim', 'faint', 'acc', 'acc2', 'warn', 'bad', 'grid', 'cellbg']
+const KEYS = ['bg', 'panel', 'panel2', 'line', 'line2', 'fg', 'dim', 'faint', 'acc', 'acc2', 'warn', 'bad', 'grid', 'cellbg', 'p-cf', 'p-lc', 'p-ac', 'p-cc']
 
 /** Palette for the active look, read back from the CSS variables so CSS stays the single source. */
 export function readTheme(look) {
